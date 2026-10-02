@@ -1,0 +1,2237 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>BoneScan AI | Fracture Detection</title>
+
+    <style>
+
+        /* =====================================================
+           GLOBAL
+        ===================================================== */
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #020617;
+            --panel: rgba(15, 23, 42, 0.72);
+            --panel-light: rgba(30, 41, 59, 0.65);
+            --border: rgba(148, 163, 184, 0.16);
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --blue: #38bdf8;
+            --cyan: #22d3ee;
+            --green: #4ade80;
+            --red: #fb7185;
+            --purple: #a78bfa;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            min-height: 100vh;
+            font-family:
+                Inter,
+                "Segoe UI",
+                Arial,
+                sans-serif;
+
+            color: var(--text);
+
+            background:
+                radial-gradient(
+                    circle at 10% 10%,
+                    rgba(14, 165, 233, 0.18),
+                    transparent 30%
+                ),
+                radial-gradient(
+                    circle at 90% 20%,
+                    rgba(139, 92, 246, 0.14),
+                    transparent 30%
+                ),
+                radial-gradient(
+                    circle at 50% 100%,
+                    rgba(20, 184, 166, 0.10),
+                    transparent 35%
+                ),
+                var(--bg);
+
+            overflow-x: hidden;
+        }
+
+
+        /* =====================================================
+           BACKGROUND
+        ===================================================== */
+
+        .background-grid {
+            position: fixed;
+            inset: 0;
+
+            background-image:
+                linear-gradient(
+                    rgba(255,255,255,0.025) 1px,
+                    transparent 1px
+                ),
+                linear-gradient(
+                    90deg,
+                    rgba(255,255,255,0.025) 1px,
+                    transparent 1px
+                );
+
+            background-size: 45px 45px;
+
+            mask-image:
+                linear-gradient(
+                    to bottom,
+                    black,
+                    transparent
+                );
+
+            pointer-events: none;
+
+            z-index: -2;
+        }
+
+
+        .orb {
+            position: fixed;
+
+            width: 350px;
+            height: 350px;
+
+            border-radius: 50%;
+
+            filter: blur(100px);
+
+            opacity: 0.12;
+
+            pointer-events: none;
+
+            z-index: -1;
+
+            animation:
+                floatOrb 12s ease-in-out infinite;
+        }
+
+        .orb.one {
+            top: -150px;
+            left: -100px;
+            background: #0ea5e9;
+        }
+
+        .orb.two {
+            right: -150px;
+            bottom: -120px;
+            background: #8b5cf6;
+            animation-delay: -4s;
+        }
+
+        @keyframes floatOrb {
+
+            0%, 100% {
+                transform: translate(
+                    0,
+                    0
+                );
+            }
+
+            50% {
+                transform: translate(
+                    35px,
+                    -25px
+                );
+            }
+        }
+
+
+        /* =====================================================
+           NAVBAR
+        ===================================================== */
+
+        .navbar {
+
+            width: 100%;
+
+            border-bottom:
+                1px solid var(--border);
+
+            background:
+                rgba(2, 6, 23, 0.72);
+
+            backdrop-filter:
+                blur(20px);
+
+            position: sticky;
+
+            top: 0;
+
+            z-index: 100;
+        }
+
+        .nav-inner {
+
+            max-width: 1250px;
+
+            margin: auto;
+
+            padding:
+                18px 25px;
+
+            display: flex;
+
+            justify-content:
+                space-between;
+
+            align-items: center;
+        }
+
+
+        .brand {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 12px;
+        }
+
+
+        .brand-icon {
+
+            width: 44px;
+            height: 44px;
+
+            display: flex;
+
+            align-items: center;
+            justify-content: center;
+
+            border-radius: 13px;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #0284c7,
+                    #06b6d4
+                );
+
+            font-size: 23px;
+
+            box-shadow:
+                0 8px 30px
+                rgba(14,165,233,0.25);
+        }
+
+
+        .brand-name {
+
+            font-size: 20px;
+
+            font-weight: 800;
+
+            letter-spacing: -0.5px;
+        }
+
+        .brand-name span {
+            color: var(--blue);
+        }
+
+
+        .status {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 8px;
+
+            padding:
+                8px 14px;
+
+            border:
+                1px solid
+                rgba(74,222,128,0.25);
+
+            border-radius: 999px;
+
+            color: #86efac;
+
+            font-size: 13px;
+
+            background:
+                rgba(74,222,128,0.06);
+        }
+
+
+        .status-dot {
+
+            width: 7px;
+            height: 7px;
+
+            background: var(--green);
+
+            border-radius: 50%;
+
+            box-shadow:
+                0 0 12px
+                var(--green);
+
+            animation:
+                pulse 2s infinite;
+        }
+
+
+        @keyframes pulse {
+
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: .45;
+                transform: scale(.7);
+            }
+        }
+
+
+        /* =====================================================
+           MAIN
+        ===================================================== */
+
+        .main {
+
+            max-width: 1250px;
+
+            margin: auto;
+
+            padding:
+                60px 25px 80px;
+        }
+
+
+        /* =====================================================
+           HERO
+        ===================================================== */
+
+        .hero {
+
+            text-align: center;
+
+            max-width: 850px;
+
+            margin:
+                0 auto 55px;
+        }
+
+
+        .hero-badge {
+
+            display: inline-flex;
+
+            align-items: center;
+
+            gap: 8px;
+
+            padding:
+                8px 15px;
+
+            border:
+                1px solid
+                rgba(56,189,248,0.25);
+
+            border-radius: 999px;
+
+            background:
+                rgba(56,189,248,0.06);
+
+            color: #7dd3fc;
+
+            font-size: 13px;
+
+            font-weight: 600;
+
+            margin-bottom: 20px;
+        }
+
+
+        .hero h1 {
+
+            font-size:
+                clamp(42px, 6vw, 72px);
+
+            line-height: 1.02;
+
+            letter-spacing:
+                -3px;
+
+            margin-bottom: 22px;
+
+            background:
+                linear-gradient(
+                    100deg,
+                    #ffffff,
+                    #7dd3fc 45%,
+                    #a78bfa
+                );
+
+            -webkit-background-clip:
+                text;
+
+            -webkit-text-fill-color:
+                transparent;
+        }
+
+
+        .hero p {
+
+            color: var(--muted);
+
+            font-size: 18px;
+
+            line-height: 1.7;
+        }
+
+
+        /* =====================================================
+           DASHBOARD
+        ===================================================== */
+
+        .dashboard {
+
+            display: grid;
+
+            grid-template-columns:
+                1.2fr .8fr;
+
+            gap: 25px;
+        }
+
+
+        .glass-card {
+
+            background:
+                var(--panel);
+
+            border:
+                1px solid var(--border);
+
+            border-radius: 26px;
+
+            backdrop-filter:
+                blur(25px);
+
+            box-shadow:
+                0 30px 80px
+                rgba(0,0,0,.28);
+        }
+
+
+        /* =====================================================
+           UPLOAD CARD
+        ===================================================== */
+
+        .upload-card {
+
+            padding: 30px;
+        }
+
+
+        .section-header {
+
+            display: flex;
+
+            justify-content:
+                space-between;
+
+            align-items: center;
+
+            margin-bottom: 25px;
+        }
+
+
+        .section-title {
+
+            font-size: 19px;
+
+            font-weight: 700;
+        }
+
+
+        .section-subtitle {
+
+            color: var(--muted);
+
+            font-size: 13px;
+
+            margin-top: 5px;
+        }
+
+
+        .upload-zone {
+
+            min-height: 390px;
+
+            border:
+                1.5px dashed
+                rgba(56,189,248,.4);
+
+            border-radius: 22px;
+
+            display: flex;
+
+            flex-direction: column;
+
+            align-items: center;
+
+            justify-content: center;
+
+            text-align: center;
+
+            padding: 30px;
+
+            cursor: pointer;
+
+            transition:
+                .35s ease;
+
+            position: relative;
+
+            overflow: hidden;
+        }
+
+
+        .upload-zone::before {
+
+            content: "";
+
+            position: absolute;
+
+            inset: 0;
+
+            background:
+                radial-gradient(
+                    circle,
+                    rgba(56,189,248,.10),
+                    transparent 65%
+                );
+
+            opacity: 0;
+
+            transition: .35s;
+        }
+
+
+        .upload-zone:hover,
+        .upload-zone.dragover {
+
+            border-color:
+                var(--blue);
+
+            transform:
+                translateY(-3px);
+
+            background:
+                rgba(56,189,248,.035);
+
+            box-shadow:
+                0 15px 50px
+                rgba(14,165,233,.10);
+        }
+
+
+        .upload-zone:hover::before,
+        .upload-zone.dragover::before {
+            opacity: 1;
+        }
+
+
+        .upload-icon {
+
+            width: 90px;
+            height: 90px;
+
+            display: flex;
+
+            align-items: center;
+            justify-content: center;
+
+            border-radius: 25px;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    rgba(14,165,233,.18),
+                    rgba(6,182,212,.08)
+                );
+
+            border:
+                1px solid
+                rgba(56,189,248,.2);
+
+            font-size: 42px;
+
+            margin-bottom: 22px;
+
+            position: relative;
+
+            z-index: 1;
+        }
+
+
+        .upload-zone h2 {
+
+            font-size: 22px;
+
+            margin-bottom: 9px;
+
+            position: relative;
+
+            z-index: 1;
+        }
+
+
+        .upload-zone p {
+
+            color: var(--muted);
+
+            font-size: 14px;
+
+            margin-bottom: 20px;
+
+            position: relative;
+
+            z-index: 1;
+        }
+
+
+        .browse {
+
+            color: var(--blue);
+
+            font-weight: 700;
+        }
+
+
+        .formats {
+
+            margin-top: 20px;
+
+            font-size: 12px;
+
+            color: #64748b;
+
+            position: relative;
+
+            z-index: 1;
+        }
+
+
+        #imageInput {
+            display: none;
+        }
+
+
+        /* =====================================================
+           PREVIEW
+        ===================================================== */
+
+        .preview-container {
+
+            display: none;
+
+            margin-top: 20px;
+
+            position: relative;
+        }
+
+
+        .preview-container.show {
+            display: block;
+        }
+
+
+        .preview-image {
+
+            width: 100%;
+
+            max-height: 300px;
+
+            object-fit: contain;
+
+            border-radius: 17px;
+
+            background: #020617;
+
+            border:
+                1px solid var(--border);
+        }
+
+
+        .file-info {
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content:
+                space-between;
+
+            margin-top: 12px;
+
+            padding:
+                12px 15px;
+
+            background:
+                rgba(30,41,59,.6);
+
+            border-radius: 12px;
+
+            font-size: 13px;
+        }
+
+
+        .file-name {
+
+            color: #cbd5e1;
+
+            overflow: hidden;
+
+            white-space: nowrap;
+
+            text-overflow: ellipsis;
+        }
+
+
+        .remove-file {
+
+            border: none;
+
+            background: none;
+
+            color: #fb7185;
+
+            cursor: pointer;
+
+            font-weight: 600;
+        }
+
+
+        /* =====================================================
+           BUTTON
+        ===================================================== */
+
+        .analyze-btn {
+
+            width: 100%;
+
+            margin-top: 20px;
+
+            padding: 17px;
+
+            border: none;
+
+            border-radius: 15px;
+
+            color: white;
+
+            background:
+                linear-gradient(
+                    100deg,
+                    #0284c7,
+                    #0891b2,
+                    #0d9488
+                );
+
+            font-size: 16px;
+
+            font-weight: 800;
+
+            cursor: pointer;
+
+            position: relative;
+
+            overflow: hidden;
+
+            transition:
+                .3s ease;
+
+            box-shadow:
+                0 12px 35px
+                rgba(8,145,178,.20);
+        }
+
+
+        .analyze-btn:hover {
+
+            transform:
+                translateY(-2px);
+
+            box-shadow:
+                0 18px 45px
+                rgba(8,145,178,.30);
+        }
+
+
+        .analyze-btn:active {
+            transform: scale(.99);
+        }
+
+
+        .analyze-btn.loading {
+            pointer-events: none;
+            opacity: .75;
+        }
+
+
+        /* =====================================================
+           INFO CARD
+        ===================================================== */
+
+        .info-card {
+
+            padding: 30px;
+        }
+
+
+        .model-box {
+
+            padding:
+                20px;
+
+            border:
+                1px solid var(--border);
+
+            border-radius: 18px;
+
+            background:
+                rgba(30,41,59,.45);
+
+            margin-bottom: 15px;
+        }
+
+
+        .model-name {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 12px;
+
+            margin-bottom: 10px;
+        }
+
+
+        .model-icon {
+
+            width: 42px;
+            height: 42px;
+
+            display: flex;
+
+            align-items: center;
+            justify-content: center;
+
+            border-radius: 12px;
+
+            background:
+                rgba(167,139,250,.12);
+
+            color: var(--purple);
+
+            font-size: 20px;
+        }
+
+
+        .model-name strong {
+            font-size: 15px;
+        }
+
+
+        .model-name span {
+
+            display: block;
+
+            color: var(--muted);
+
+            font-size: 12px;
+
+            margin-top: 3px;
+        }
+
+
+        .stats {
+
+            display: grid;
+
+            grid-template-columns:
+                1fr 1fr;
+
+            gap: 10px;
+
+            margin-top: 20px;
+        }
+
+
+        .stat {
+
+            padding:
+                15px;
+
+            border:
+                1px solid var(--border);
+
+            border-radius: 14px;
+
+            background:
+                rgba(2,6,23,.35);
+        }
+
+
+        .stat-value {
+
+            font-size: 20px;
+
+            font-weight: 800;
+
+            color: var(--blue);
+        }
+
+
+        .stat-label {
+
+            font-size: 11px;
+
+            color: var(--muted);
+
+            margin-top: 5px;
+        }
+
+
+        /* =====================================================
+           PIPELINE
+        ===================================================== */
+
+        .pipeline {
+
+            margin-top: 25px;
+        }
+
+
+        .pipeline-title {
+
+            font-size: 14px;
+
+            color: #cbd5e1;
+
+            margin-bottom: 15px;
+
+            font-weight: 700;
+        }
+
+
+        .pipeline-item {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 12px;
+
+            padding:
+                11px 0;
+
+            color: var(--muted);
+
+            font-size: 13px;
+
+            border-bottom:
+                1px solid
+                rgba(148,163,184,.07);
+        }
+
+
+        .pipeline-item:last-child {
+            border-bottom: none;
+        }
+
+
+        .pipeline-number {
+
+            width: 27px;
+            height: 27px;
+
+            display: flex;
+
+            align-items: center;
+            justify-content: center;
+
+            border-radius: 8px;
+
+            background:
+                rgba(56,189,248,.08);
+
+            color: var(--blue);
+
+            font-size: 11px;
+
+            font-weight: 800;
+        }
+
+
+        /* =====================================================
+           RESULT SECTION
+        ===================================================== */
+
+        .result-section {
+
+            margin-top: 30px;
+
+            animation:
+                resultAppear .7s ease;
+        }
+
+
+        @keyframes resultAppear {
+
+            from {
+                opacity: 0;
+                transform: translateY(25px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+
+        .result-header {
+
+            text-align: center;
+
+            margin-bottom: 25px;
+        }
+
+
+        .result-header h2 {
+
+            font-size: 28px;
+
+            margin-bottom: 7px;
+        }
+
+
+        .result-header p {
+
+            color: var(--muted);
+
+            font-size: 14px;
+        }
+
+
+        .prediction-card {
+
+            padding: 30px;
+
+            border:
+                1px solid var(--border);
+
+            border-radius: 23px;
+
+            background:
+                var(--panel);
+
+            backdrop-filter:
+                blur(20px);
+
+            text-align: center;
+
+            margin-bottom: 25px;
+        }
+
+
+        .prediction-status {
+
+            display: inline-flex;
+
+            align-items: center;
+
+            gap: 10px;
+
+            padding:
+                10px 18px;
+
+            border-radius: 999px;
+
+            font-size: 13px;
+
+            font-weight: 700;
+
+            margin-bottom: 15px;
+        }
+
+
+        .prediction-status.normal {
+
+            color: #86efac;
+
+            background:
+                rgba(74,222,128,.08);
+
+            border:
+                1px solid
+                rgba(74,222,128,.2);
+        }
+
+
+        .prediction-status.fracture {
+
+            color: #fda4af;
+
+            background:
+                rgba(251,113,133,.08);
+
+            border:
+                1px solid
+                rgba(251,113,133,.2);
+        }
+
+
+        .prediction-value {
+
+            font-size:
+                clamp(35px, 5vw, 55px);
+
+            font-weight: 900;
+
+            letter-spacing: -2px;
+
+            margin-bottom: 10px;
+        }
+
+
+        .prediction-value.normal {
+            color: var(--green);
+        }
+
+
+        .prediction-value.fracture {
+            color: var(--red);
+        }
+
+
+        .confidence-label {
+
+            color: var(--muted);
+
+            font-size: 14px;
+
+            margin-bottom: 12px;
+        }
+
+
+        .confidence-bar {
+
+            max-width: 500px;
+
+            height: 10px;
+
+            margin:
+                0 auto;
+
+            border-radius: 999px;
+
+            background:
+                rgba(148,163,184,.12);
+
+            overflow: hidden;
+        }
+
+
+        .confidence-fill {
+
+            height: 100%;
+
+            width: 0;
+
+            border-radius: 999px;
+
+            background:
+                linear-gradient(
+                    90deg,
+                    #06b6d4,
+                    #38bdf8,
+                    #a78bfa
+                );
+
+            animation:
+                fillConfidence 1.2s
+                ease forwards;
+        }
+
+
+        @keyframes fillConfidence {
+
+            from {
+                width: 0;
+            }
+
+            to {
+                width: var(--confidence);
+            }
+        }
+
+
+        /* =====================================================
+           IMAGE COMPARISON
+        ===================================================== */
+
+        .image-grid {
+
+            display: grid;
+
+            grid-template-columns:
+                1fr 1fr;
+
+            gap: 20px;
+        }
+
+
+        .image-card {
+
+            padding: 18px;
+
+            border:
+                1px solid var(--border);
+
+            border-radius: 20px;
+
+            background:
+                var(--panel);
+
+            backdrop-filter:
+                blur(20px);
+        }
+
+
+        .image-card-header {
+
+            display: flex;
+
+            justify-content:
+                space-between;
+
+            align-items: center;
+
+            margin-bottom: 15px;
+        }
+
+
+        .image-card-header h3 {
+
+            font-size: 15px;
+        }
+
+
+        .image-tag {
+
+            font-size: 10px;
+
+            padding:
+                5px 9px;
+
+            border-radius: 999px;
+
+            color: var(--muted);
+
+            background:
+                rgba(148,163,184,.08);
+        }
+
+
+        .result-image {
+
+            width: 100%;
+
+            height: 390px;
+
+            object-fit: contain;
+
+            background:
+                #020617;
+
+            border-radius: 14px;
+
+            border:
+                1px solid
+                rgba(148,163,184,.08);
+        }
+
+
+        /* =====================================================
+           DISCLAIMER
+        ===================================================== */
+
+        .disclaimer {
+
+            margin-top: 25px;
+
+            padding:
+                18px 20px;
+
+            border:
+                1px solid
+                rgba(250,204,21,.15);
+
+            border-radius: 16px;
+
+            background:
+                rgba(250,204,21,.035);
+
+            color: #cbd5e1;
+
+            font-size: 12px;
+
+            line-height: 1.7;
+
+            text-align: center;
+        }
+
+
+        .disclaimer strong {
+            color: #fde68a;
+        }
+
+
+        /* =====================================================
+           ERROR
+        ===================================================== */
+
+        .error-box {
+
+            margin-top: 20px;
+
+            padding:
+                16px 18px;
+
+            border-radius: 14px;
+
+            border:
+                1px solid
+                rgba(248,113,113,.25);
+
+            background:
+                rgba(248,113,113,.06);
+
+            color: #fda4af;
+
+            font-size: 13px;
+        }
+
+
+        /* =====================================================
+           FOOTER
+        ===================================================== */
+
+        footer {
+
+            text-align: center;
+
+            padding:
+                30px 20px 45px;
+
+            color: #475569;
+
+            font-size: 12px;
+        }
+
+
+        /* =====================================================
+           MOBILE
+        ===================================================== */
+
+        @media (max-width: 900px) {
+
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+
+        }
+
+
+        @media (max-width: 700px) {
+
+            .main {
+                padding-top: 40px;
+            }
+
+            .nav-inner {
+                padding:
+                    14px 18px;
+            }
+
+            .status {
+                display: none;
+            }
+
+            .upload-card,
+            .info-card {
+                padding: 20px;
+            }
+
+            .upload-zone {
+                min-height: 320px;
+            }
+
+            .image-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .result-image {
+                height: 300px;
+            }
+
+            .hero h1 {
+                letter-spacing: -2px;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<div class="background-grid"></div>
+
+<div class="orb one"></div>
+<div class="orb two"></div>
+
+
+<!-- =========================================================
+     NAVBAR
+========================================================= -->
+
+<nav class="navbar">
+
+    <div class="nav-inner">
+
+        <div class="brand">
+
+            <div class="brand-icon">
+                🦴
+            </div>
+
+            <div class="brand-name">
+                BoneScan <span>AI</span>
+            </div>
+
+        </div>
+
+
+        <div class="status">
+
+            <span class="status-dot"></span>
+
+            AI System Online
+
+        </div>
+
+    </div>
+
+</nav>
+
+
+
+<!-- =========================================================
+     MAIN
+========================================================= -->
+
+<main class="main">
+
+
+    <!-- HERO -->
+
+    <section class="hero">
+
+        <div class="hero-badge">
+            ✦ AI-Powered X-Ray Analysis
+        </div>
+
+        <h1>
+            Intelligent Bone<br>
+            Fracture Detection
+        </h1>
+
+        <p>
+            Upload an X-ray image and let our
+            EfficientNet-based AI model analyze
+            it for fracture patterns with
+            explainable Grad-CAM visualization.
+        </p>
+
+    </section>
+
+
+
+    <!-- DASHBOARD -->
+
+    <section class="dashboard">
+
+
+        <!-- =================================================
+             UPLOAD CARD
+        ================================================= -->
+
+        <div class="glass-card upload-card">
+
+            <div class="section-header">
+
+                <div>
+
+                    <div class="section-title">
+                        X-Ray Analysis
+                    </div>
+
+                    <div class="section-subtitle">
+                        Upload an image to begin analysis
+                    </div>
+
+                </div>
+
+                <span>
+                    🩻
+                </span>
+
+            </div>
+
+
+            <form
+                action="/predict"
+                method="POST"
+                enctype="multipart/form-data"
+                id="uploadForm"
+            >
+
+
+                <label
+                    for="imageInput"
+                    class="upload-zone"
+                    id="uploadZone"
+                >
+
+                    <div class="upload-icon">
+                        🩻
+                    </div>
+
+                    <h2>
+                        Drop X-Ray Here
+                    </h2>
+
+                    <p>
+                        or
+                        <span class="browse">
+                            browse from your computer
+                        </span>
+                    </p>
+
+                    <div class="formats">
+                        Supported: JPG, JPEG, PNG
+                    </div>
+
+                </label>
+
+
+                <input
+                    type="file"
+                    id="imageInput"
+                    name="image"
+                    accept=".jpg,.jpeg,.png"
+                    required
+                >
+
+
+                <!-- PREVIEW -->
+
+                <div
+                    class="preview-container"
+                    id="previewContainer"
+                >
+
+                    <img
+                        id="previewImage"
+                        class="preview-image"
+                        alt="X-Ray Preview"
+                    >
+
+                    <div class="file-info">
+
+                        <span
+                            class="file-name"
+                            id="fileName"
+                        >
+                            Image selected
+                        </span>
+
+                        <button
+                            type="button"
+                            class="remove-file"
+                            id="removeFile"
+                        >
+                            Remove
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <button
+                    type="submit"
+                    class="analyze-btn"
+                    id="analyzeBtn"
+                >
+
+                    <span id="buttonText">
+                        ✦ Analyze X-Ray
+                    </span>
+
+                </button>
+
+
+            </form>
+
+
+            {% if error %}
+
+            <div class="error-box">
+
+                ⚠️ {{ error }}
+
+            </div>
+
+            {% endif %}
+
+        </div>
+
+
+
+        <!-- =================================================
+             MODEL INFO
+        ================================================= -->
+
+        <div class="glass-card info-card">
+
+            <div class="section-header">
+
+                <div>
+
+                    <div class="section-title">
+                        AI Model
+                    </div>
+
+                    <div class="section-subtitle">
+                        Current analysis engine
+                    </div>
+
+                </div>
+
+                <span>
+                    ✨
+                </span>
+
+            </div>
+
+
+            <div class="model-box">
+
+                <div class="model-name">
+
+                    <div class="model-icon">
+                        AI
+                    </div>
+
+                    <div>
+
+                        <strong>
+                            EfficientNetB1
+                        </strong>
+
+                        <span>
+                            Transfer Learning
+                        </span>
+
+                    </div>
+
+                </div>
+
+
+                <div class="stats">
+
+                    <div class="stat">
+
+                        <div class="stat-value">
+                            94.47%
+                        </div>
+
+                        <div class="stat-label">
+                            Test Accuracy
+                        </div>
+
+                    </div>
+
+
+                    <div class="stat">
+
+                        <div class="stat-value">
+                            98.89%
+                        </div>
+
+                        <div class="stat-label">
+                            ROC-AUC
+                        </div>
+
+                    </div>
+
+
+                    <div class="stat">
+
+                        <div class="stat-value">
+                            240×240
+                        </div>
+
+                        <div class="stat-label">
+                            Input Size
+                        </div>
+
+                    </div>
+
+
+                    <div class="stat">
+
+                        <div class="stat-value">
+                            2
+                        </div>
+
+                        <div class="stat-label">
+                            Classes
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="pipeline">
+
+                <div class="pipeline-title">
+                    Analysis Pipeline
+                </div>
+
+
+                <div class="pipeline-item">
+
+                    <span class="pipeline-number">
+                        01
+                    </span>
+
+                    X-Ray Preprocessing
+
+                </div>
+
+
+                <div class="pipeline-item">
+
+                    <span class="pipeline-number">
+                        02
+                    </span>
+
+                    EfficientNetB1 Prediction
+
+                </div>
+
+
+                <div class="pipeline-item">
+
+                    <span class="pipeline-number">
+                        03
+                    </span>
+
+                    Fracture Classification
+
+                </div>
+
+
+                <div class="pipeline-item">
+
+                    <span class="pipeline-number">
+                        04
+                    </span>
+
+                    Grad-CAM Explanation
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =====================================================
+         RESULTS
+    ===================================================== -->
+
+    {% if prediction %}
+
+    <section class="result-section">
+
+
+        <div class="result-header">
+
+            <h2>
+                Analysis Complete
+            </h2>
+
+            <p>
+                AI-generated classification and visual explanation
+            </p>
+
+        </div>
+
+
+        <!-- PREDICTION -->
+
+        <div class="prediction-card">
+
+
+            <div
+                class="prediction-status
+                {% if prediction == 'NORMAL' %}
+                    normal
+                {% else %}
+                    fracture
+                {% endif %}"
+            >
+
+                {% if prediction == 'NORMAL' %}
+                    ● No fracture pattern detected
+                {% else %}
+                    ● Fracture pattern detected
+                {% endif %}
+
+            </div>
+
+
+            <div
+                class="prediction-value
+                {% if prediction == 'NORMAL' %}
+                    normal
+                {% else %}
+                    fracture
+                {% endif %}"
+            >
+
+                {{ prediction }}
+
+            </div>
+
+
+            <div class="confidence-label">
+
+                Model Confidence:
+                <strong>
+                    {{ confidence }}%
+                </strong>
+
+            </div>
+
+
+            <div class="confidence-bar">
+
+                <div
+                    class="confidence-fill"
+                    style="--confidence: {{ confidence }}%;"
+                ></div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- IMAGE COMPARISON -->
+
+        <div class="image-grid">
+
+
+            <div class="image-card">
+
+                <div class="image-card-header">
+
+                    <h3>
+                        Original X-Ray
+                    </h3>
+
+                    <span class="image-tag">
+                        INPUT
+                    </span>
+
+                </div>
+
+
+                <img
+                    src="{{ url_for(
+                        'static',
+                        filename=image_file
+                    ) }}"
+                    class="result-image"
+                    alt="Original X-Ray"
+                >
+
+            </div>
+
+
+
+            <div class="image-card">
+
+                <div class="image-card-header">
+
+                    <h3>
+                        Grad-CAM Analysis
+                    </h3>
+
+                    <span class="image-tag">
+                        EXPLANATION
+                    </span>
+
+                </div>
+
+
+                <img
+                    src="{{ url_for(
+                        'static',
+                        filename=result_file
+                    ) }}"
+                    class="result-image"
+                    alt="Grad-CAM Visualization"
+                >
+
+            </div>
+
+
+        </div>
+
+
+
+        <div class="disclaimer">
+
+            <strong>Research / Educational Prototype:</strong>
+
+            BoneScan AI is intended for educational and
+            research purposes. It is not a medical device
+            and should not be used as a substitute for
+            professional medical diagnosis or treatment.
+
+        </div>
+
+
+    </section>
+
+    {% endif %}
+
+
+</main>
+
+
+
+<!-- =========================================================
+     FOOTER
+========================================================= -->
+
+<footer>
+
+    BoneScan AI • Explainable AI for Bone Fracture Research
+
+</footer>
+
+
+
+<!-- =========================================================
+     JAVASCRIPT
+========================================================= -->
+
+<script>
+
+    const imageInput =
+        document.getElementById(
+            "imageInput"
+        );
+
+    const uploadZone =
+        document.getElementById(
+            "uploadZone"
+        );
+
+    const previewContainer =
+        document.getElementById(
+            "previewContainer"
+        );
+
+    const previewImage =
+        document.getElementById(
+            "previewImage"
+        );
+
+    const fileName =
+        document.getElementById(
+            "fileName"
+        );
+
+    const removeFile =
+        document.getElementById(
+            "removeFile"
+        );
+
+    const uploadForm =
+        document.getElementById(
+            "uploadForm"
+        );
+
+    const analyzeBtn =
+        document.getElementById(
+            "analyzeBtn"
+        );
+
+    const buttonText =
+        document.getElementById(
+            "buttonText"
+        );
+
+
+    /* =====================================================
+       FILE SELECTION
+    ===================================================== */
+
+    imageInput.addEventListener(
+        "change",
+        function () {
+
+            if (
+                this.files &&
+                this.files.length > 0
+            ) {
+
+                showPreview(
+                    this.files[0]
+                );
+
+            }
+
+        }
+    );
+
+
+    /* =====================================================
+       PREVIEW
+    ===================================================== */
+
+    function showPreview(file) {
+
+        if (!file.type.startsWith("image/")) {
+
+            alert(
+                "Please select a valid image."
+            );
+
+            imageInput.value = "";
+
+            return;
+        }
+
+
+        fileName.textContent =
+            file.name;
+
+
+        const reader =
+            new FileReader();
+
+
+        reader.onload = function (event) {
+
+            previewImage.src =
+                event.target.result;
+
+            previewContainer.classList.add(
+                "show"
+            );
+
+        };
+
+
+        reader.readAsDataURL(file);
+
+    }
+
+
+    /* =====================================================
+       REMOVE FILE
+    ===================================================== */
+
+    removeFile.addEventListener(
+        "click",
+        function (event) {
+
+            event.preventDefault();
+
+            imageInput.value = "";
+
+            previewContainer.classList.remove(
+                "show"
+            );
+
+            previewImage.src = "";
+
+            fileName.textContent =
+                "Image selected";
+
+        }
+    );
+
+
+    /* =====================================================
+       DRAG & DROP
+    ===================================================== */
+
+    [
+        "dragenter",
+        "dragover"
+    ].forEach(
+        eventName => {
+
+            uploadZone.addEventListener(
+                eventName,
+                function (event) {
+
+                    event.preventDefault();
+
+                    uploadZone.classList.add(
+                        "dragover"
+                    );
+
+                }
+            );
+
+        }
+    );
+
+
+    [
+        "dragleave",
+        "drop"
+    ].forEach(
+        eventName => {
+
+            uploadZone.addEventListener(
+                eventName,
+                function (event) {
+
+                    event.preventDefault();
+
+                    uploadZone.classList.remove(
+                        "dragover"
+                    );
+
+                }
+            );
+
+        }
+    );
+
+
+    uploadZone.addEventListener(
+        "drop",
+        function (event) {
+
+            const files =
+                event.dataTransfer.files;
+
+
+            if (
+                files &&
+                files.length > 0
+            ) {
+
+                imageInput.files =
+                    files;
+
+                showPreview(
+                    files[0]
+                );
+
+            }
+
+        }
+    );
+
+
+    /* =====================================================
+       LOADING STATE
+    ===================================================== */
+
+    uploadForm.addEventListener(
+        "submit",
+        function () {
+
+            if (
+                !imageInput.files ||
+                imageInput.files.length === 0
+            ) {
+
+                return;
+
+            }
+
+
+            analyzeBtn.classList.add(
+                "loading"
+            );
+
+
+            buttonText.innerHTML =
+                "⏳ Analyzing X-Ray...";
+
+        }
+    );
+
+
+</script>
+
+
+</body>
+
+</html>

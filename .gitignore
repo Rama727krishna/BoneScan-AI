@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Dataset
+dataset/*
+!dataset/.gitkeep
+
+# Uploaded images
+static/uploads/*
+!static/uploads/.gitkeep
+
+# Generated results
+static/results/*
+!static/results/.gitkeep
+
+# Prediction results
+models/prediction_results/
+
+# Grad-CAM generated results
+models/gradcam_results/
+
+# IDE
+.vscode/
+.idea/
+
+# Operating system
+.DS_Store
+Thumbs.db
+
+# Python cache
+.pytest_cache/
+
+# Logs
+*.log
+
+# Large trained model
+models/baseline_cnn.keras
